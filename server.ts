@@ -1,5 +1,4 @@
-import express from "express";
-import { createServer as createViteServer } from "vite";
+mport express from "express";
 import path from "path";
 import axios from "axios";
 import cors from "cors";
@@ -8,7 +7,11 @@ import * as cheerio from 'cheerio';
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  // Changed to use Render's dynamic port
+  const PORT = process.env.PORT || 3000; 
+
+  app.use(cors());
+  app.use(express.json());
 
   app.use(cors());
   app.use(express.json());
@@ -458,23 +461,10 @@ async function startServer() {
     }
   });
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
-  }
+// Removed Vite middleware - no longer needed for Android API
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  app.listen(PORT as number, "0.0.0.0", () => {
+    console.log(`Server running on port ${PORT}`);
   });
 }
 
