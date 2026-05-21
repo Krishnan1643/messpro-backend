@@ -123,6 +123,26 @@ async function startServer() {
       if (roomResp && roomResp.data && roomResp.data.length > 0) {
         studentData.roomDetails = roomResp.data[0];
       }
+      // 5. Fetch Mess Balance / Hostel Fees Details
+      console.log(`[Auth] Fetching mess balance and fees details for ${username}...`);
+      const feesParams = new URLSearchParams();
+      feesParams.append('rollno', username);
+
+      const feesResp = await axios.post(`${BASE_URL}/Student/StudHosFeesDet?rollno=${username}`, feesParams.toString(), {
+        headers: {
+          ...authHeaders,
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+        },
+        timeout: 30000
+      }).catch((feesError) => {
+        console.error("[Auth] Failed to fetch fees details:", feesError.message);
+        return null;
+      });
+
+      if (feesResp && feesResp.data) {
+        studentData.feesDetails = Array.isArray(feesResp.data) ? feesResp.data : [feesResp.data];
+        console.log(`[Auth] Fees details fetched! Entries: ${studentData.feesDetails.length}`);
+      }
 
       res.json({ 
         success: true, 
@@ -222,6 +242,38 @@ async function startServer() {
     } catch (error: any) {
       console.error("[Leaves Error]:", error.response?.data || error.message);
       res.status(500).json({ error: "Failed to fetch leave details" });
+    }
+  });
+  // Fetch Hostel Fees / Mess Balance Details Proxy
+  app.post("/api/student/fees", async (req, res) => {
+    const { username, token, cookies } = req.body;
+    const BASE_URL = "https://edviewx.psgtech.ac.in/Hostel";
+
+    if (!username || !token) {
+      return res.status(400).json({ error: "Username and token are required" });
+    }
+
+    try {
+      console.log(`[Fees] Fetching fees details for ${username}...`);
+      const feesParams = new URLSearchParams();
+      feesParams.append('rollno', username);
+
+      const response = await axios.post(`${BASE_URL}/Student/StudHosFeesDet?rollno=${username}`, feesParams.toString(), {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Referer': `${BASE_URL}/Student/StudentView`,
+          'Origin': 'https://edviewx.psgtech.ac.in',
+          'User-Agent': 'Mozilla/5.0',
+          ...(cookies ? { 'Cookie': cookies } : {})
+        },
+        timeout: 30000
+      });
+      res.json(response.data);
+    } catch (error: any) {
+      console.error("[Fees Error]:", error.response?.data || error.message);
+      res.status(500).json({ error: "Failed to fetch fees details" });
     }
   });
 
